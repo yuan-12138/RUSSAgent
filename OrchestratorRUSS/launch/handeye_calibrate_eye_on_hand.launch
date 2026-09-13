@@ -1,0 +1,126 @@
+<launch>
+  <!-- ========================================================= -->
+  <!-- easy_handeye 眼在手上（eye_on_hand / eye-in-hand）标定 -->
+  <!-- 传感器：Azure Kinect (AK) -->
+  <!-- 目标：aruco_ros 检测 ArUco 板（尺寸/ID 同 handeye_calibrate.launch） -->
+  <!-- ========================================================= -->
+
+  <!-- ===== 参数：按需改 ===== -->
+  <!-- Replace these placeholders with the marker used by the installation. -->
+  <arg name="marker_id"            default="0"/>
+  <arg name="marker_size"          default="0.05"/>
+
+  <!-- 相机话题/帧（Azure Kinect 默认） -->
+  <arg name="rgb_topic"            default="/rgb/image_raw"/>
+  <arg name="rgb_info"             default="/rgb/camera_info"/>
+  <arg name="depth_topic"          default="/depth_to_rgb/image_raw"/>
+  <!-- aruco_ros 发布的 TF：reference_frame -> marker_frame -->
+  <arg name="camera_optical_frame" default="rgb_camera_link"/>
+
+  <!-- iiwa 帧 -->
+  <arg name="robot_base_frame"     default="iiwa_link_0"/>
+  <arg name="robot_ee_frame"       default="iiwa_link_ee"/>
+
+  <!-- easy_handeye 命名前缀（保存/发布要一致） -->
+  <arg name="namespace_prefix"     default="iiwa_azure_eih"/>
+  <arg name="freehand_robot_movement" default="true"/>
+
+  <!-- Azure Kinect 驱动配置 -->
+  <arg name="color_enabled"        default="true"/>
+  <arg name="depth_enabled"        default="true"/>
+  <arg name="color_resolution"     default="720P"/>
+  <arg name="depth_mode"           default="NFOV_UNBINNED"/>
+  <arg name="fps"                  default="30"/>
+  <arg name="point_cloud"          default="true"/>
+  <arg name="rgb_point_cloud"      default="true"/>
+
+  <!-- 1) 机器人（MoveIt + RViz） -->
+  <include file="$(find iiwa_moveit)/launch/moveit_planning_execution.launch">
+    <arg name="sim" value="false"/>
+  </include>
+
+  <!-- 位姿库路径 -->
+  <arg name="yaml_path" default="$(env HOME)/.ros/easy_handeye/calib_poses.yaml"/>
+  <!-- MoveIt 命名空间 -->
+  <arg name="ns" default="/iiwa"/>
+
+  <!-- GUI 参数 -->
+  <arg name="group"          default="manipulator"/>
+  <arg name="vel_scale"      default="0.1"/>
+  <arg name="acc_scale"      default="0.1"/>
+  <arg name="auto_sample"    default="false"/>
+  <!-- 采样服务名：与 easy_handeye 的命名空间严格绑定（eye_on_hand=true -> ${prefix}_eye_on_hand） -->
+  <arg name="calib_namespace" default="$(arg namespace_prefix)_eye_on_hand"/>
+  <arg name="sample_service" default="/$(arg calib_namespace)/take_sample"/>
+  <arg name="settle_sec"     default="2"/>
+  <arg name="pkg"            default="autonomous_scan_agent"/>
+
+  <!-- 自动移动/采样（可选） -->
+  <node pkg="$(arg pkg)" type="calib_local_mover.py" name="calib_local_mover" output="screen">
+    <param name="ns"             value="$(arg ns)"/>
+    <param name="yaml"           value="$(arg yaml_path)"/>
+    <param name="group"          value="$(arg group)"/>
+    <param name="vel_scale"      value="$(arg vel_scale)"/>
+    <param name="acc_scale"      value="$(arg acc_scale)"/>
+    <param name="auto_sample"    value="$(arg auto_sample)"/>
+    <param name="sample_service" value="$(arg sample_service)"/>
+    <param name="settle_sec"     value="$(arg settle_sec)"/>
+  </node>
+
+  <!-- 2) Azure Kinect -->
+  <!-- Do not overwrite iiwa robot_description (MoveIt needs iiwa URDF/SRDF). -->
+  <include file="$(find azure_kinect_ros_driver)/launch/driver.launch">
+    <arg name="overwrite_robot_description" value="false"/>
+    <arg name="color_enabled"    value="$(arg color_enabled)"/>
+    <arg name="depth_enabled"    value="$(arg depth_enabled)"/>
+    <arg name="color_resolution" value="$(arg color_resolution)"/>
+    <arg name="depth_mode"       value="$(arg depth_mode)"/>
+    <arg name="fps"              value="$(arg fps)"/>
+    <arg name="point_cloud"      value="$(arg point_cloud)"/>
+    <arg name="rgb_point_cloud"  value="$(arg rgb_point_cloud)"/>
+  </include>
+
+  <!-- 3) ArUco 检测：发布 TF（tracking_base_frame -> aruco_marker_frame） -->
+  <node pkg="aruco_ros" type="single" name="aruco_single" output="screen">
+    <param name="marker_size"        value="$(arg marker_size)"/>
+    <param name="marker_id"          value="$(arg marker_id)"/>
+    <!-- 关键：reference_frame 必须与 easy_handeye 的 tracking_base_frame 在同一棵 TF 树里 -->
+    <!-- 这里统一使用相机光学帧（默认 rgb_camera_link） -->
+    <param name="reference_frame"    value="$(arg camera_optical_frame)"/>
+    <param name="camera_frame"       value="$(arg camera_optical_frame)"/>
+    <param name="image_is_rectified" value="false"/>
+    <param name="publish_tf"         value="true"/>
+    <param name="marker_frame"       value="aruco_marker_frame"/>
+
+    <remap from="image"       to="$(arg rgb_topic)"/>
+    <remap from="camera_info" to="$(arg rgb_info)"/>
+  </node>
+
+  <!-- 3b) Keepalive: 强制订阅 /aruco_single/pose，避免 aruco_ros 在“无订阅者”时不处理图像 -->
+  <arg name="aruco_keepalive" default="true"/>
+  <node if="$(arg aruco_keepalive)"
+        pkg="topic_tools" type="relay" name="aruco_pose_keepalive" output="screen"
+        args="/aruco_single/pose /aruco_single/pose_keepalive"/>
+
+  <!-- 4) easy_handeye 标定（eye_on_hand = true） -->
+  <!--
+    eye_on_hand=true 时：
+      - tracking_base_frame 应该是相机坐标系（aruco_ros 的 reference_frame）
+      - tracking_marker_frame 是 ArUco marker frame
+      - robot_base_frame / robot_effector_frame 来自机器人 tf
+  -->
+  <include file="$(find easy_handeye)/launch/calibrate.launch">
+    <arg name="eye_on_hand"             value="true"/>
+    <arg name="namespace_prefix"        value="$(arg namespace_prefix)"/>
+    <arg name="robot_base_frame"        value="$(arg robot_base_frame)"/>
+    <arg name="robot_effector_frame"    value="$(arg robot_ee_frame)"/>
+    <arg name="tracking_base_frame"     value="camera_base"/>
+    <arg name="tracking_marker_frame"   value="aruco_marker_frame"/>
+    <arg name="freehand_robot_movement" value="$(arg freehand_robot_movement)"/>
+    <!-- MoveIt launch already starts RViz; avoid a second instance -->
+    <arg name="start_rviz"              value="false"/>
+  </include>
+
+</launch>
+
+

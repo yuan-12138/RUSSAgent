@@ -1,0 +1,21 @@
+# Hand-eye calibration result template (eye-in-hand).
+# Copy to ~/.ros/easy_handeye/iiwa_azure_eih_eye_on_hand.yaml after calibration,
+# or set calibration_file in bringup launch.
+parameters:
+  eye_on_hand: true
+  freehand_robot_movement: true
+  move_group: manipulator
+  move_group_namespace: /
+  namespace: /iiwa_azure_eih_eye_on_hand/
+  robot_base_frame: iiwa_link_0
+  robot_effector_frame: iiwa_link_ee
+  tracking_base_frame: camera_base
+  tracking_marker_frame: aruco_marker_frame
+transformation:
+  qw: 1.0
+  qx: 0.0
+  qy: 0.0
+  qz: 0.0
+  x: 0.0
+  y: 0.0
+  z: 0.0

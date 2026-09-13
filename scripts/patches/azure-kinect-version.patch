@@ -1,0 +1,79 @@
+diff --git a/cmake/Findk4a.cmake b/cmake/Findk4a.cmake
+index aa39c26..9c31254 100644
+--- a/cmake/Findk4a.cmake
++++ b/cmake/Findk4a.cmake
+@@ -17,9 +17,17 @@ else()
+     message(FATAL_ERROR "Unknown CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+ endif()
+ 
+-# K4A versions have exactly 3 components: major.minor.rev
+-if (NOT (FIND_VERSION_COUNT EQUAL 3))
+-    message(FATAL_ERROR "Error: Azure Kinect SDK Version numbers contain exactly 3 components (major.minor.rev). Requested number of components: ${FIND_VERSION_COUNT}")
++# K4A versions are typically major.minor.rev (3 components), but some upstream
++# configs (e.g. k4abtConfig.cmake -> find_dependency(k4a ...)) may request only
++# major.minor (2 components). Accept both and normalize to 3 components.
++set(_k4a_find_version "${FIND_VERSION}")
++if (FIND_VERSION_COUNT EQUAL 0)
++    # No version requested; leave empty.
++    set(_k4a_find_version "")
++elseif (FIND_VERSION_COUNT EQUAL 2)
++    set(_k4a_find_version "${FIND_VERSION}.0")
++elseif (NOT (FIND_VERSION_COUNT EQUAL 3))
++    message(FATAL_ERROR "Error: Azure Kinect SDK Version numbers should have 2 or 3 components (major.minor[.rev]). Requested number of components: ${FIND_VERSION_COUNT} (FIND_VERSION='${FIND_VERSION}')")
+ endif()
+ 
+ # First, check the ext/sdk folder for a depth engine. ALWAYS DO THIS FIRST.
+@@ -34,8 +42,8 @@ file(GLOB_RECURSE _depthengine_bin
+ if(NOT _depthengine_bin)
+     quiet_message(STATUS "Could not find depth engine in ./ext/sdk! Rejecting ext/sdk")
+ else()
+-    find_package(k4a ${FIND_VERSION} ${_exact_arg} ${_quiet_arg} NO_MODULE NO_DEFAULT_PATH PATHS "${PROJECT_SOURCE_DIR}/ext/sdk")
+-    find_package(k4arecord ${FIND_VERSION} ${_exact_arg} ${_quiet_arg} NO_MODULE NO_DEFAULT_PATH PATHS "${PROJECT_SOURCE_DIR}/ext/sdk")
++    find_package(k4a ${_k4a_find_version} ${_exact_arg} ${_quiet_arg} NO_MODULE NO_DEFAULT_PATH PATHS "${PROJECT_SOURCE_DIR}/ext/sdk")
++    find_package(k4arecord ${_k4a_find_version} ${_exact_arg} ${_quiet_arg} NO_MODULE NO_DEFAULT_PATH PATHS "${PROJECT_SOURCE_DIR}/ext/sdk")
+ 
+     if(${k4a_FOUND} AND ${k4arecord_FOUND})
+         set(K4A_INSTALL_NEEDED TRUE)
+@@ -75,8 +83,8 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+     endif()
+ 
+     # Linux is much easier: just check if k4a is installed to the system path
+-    find_package(k4a ${FIND_VERSION} ${_exact_arg} ${_quiet_arg} ${_required_arg} NO_MODULE)
+-    find_package(k4arecord ${FIND_VERSION} ${_exact_arg} ${_quiet_arg} ${_required_arg} NO_MODULE)
++    find_package(k4a ${_k4a_find_version} ${_exact_arg} ${_quiet_arg} ${_required_arg} NO_MODULE)
++    find_package(k4arecord ${_k4a_find_version} ${_exact_arg} ${_quiet_arg} ${_required_arg} NO_MODULE)
+ 
+ # On Windows, we will have to find K4A installed in Program Files. Failing that, we can search the ext/sdk folder.
+ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+diff --git a/cmake/Findk4abt.cmake b/cmake/Findk4abt.cmake
+index 5ed2898..0272758 100644
+--- a/cmake/Findk4abt.cmake
++++ b/cmake/Findk4abt.cmake
+@@ -9,9 +9,15 @@ set(RELATIVE_WIN_K4ABT_DLL_PATH "${RELATIVE_WIN_BIN_DIR}/k4abt.dll")
+ set(RELATIVE_WIN_DNN_MODEL_PATH "${RELATIVE_WIN_BIN_DIR}/dnn_model_2_0.onnx")
+ set(RELATIVE_WIN_ONNX_RUNTIME_DLL_PATH "${RELATIVE_WIN_BIN_DIR}/onnxruntime.dll")
+ 
+-# K4A BT versions have exactly 3 components: major.minor.rev
+-if (NOT (FIND_VERSION_COUNT EQUAL 3))
+-    message(FATAL_ERROR "Error: Azure Kinect Body Tracking SDK Version numbers contain exactly 3 components (major.minor.rev). Requested number of components: ${FIND_VERSION_COUNT}")
++# K4A BT versions are typically major.minor.rev (3 components), but accept
++# major.minor (2 components) and normalize to 3 components.
++set(_k4abt_find_version "${FIND_VERSION}")
++if (FIND_VERSION_COUNT EQUAL 0)
++    set(_k4abt_find_version "")
++elseif (FIND_VERSION_COUNT EQUAL 2)
++    set(_k4abt_find_version "${FIND_VERSION}.0")
++elseif (NOT (FIND_VERSION_COUNT EQUAL 3))
++    message(FATAL_ERROR "Error: Azure Kinect Body Tracking SDK Version numbers should have 2 or 3 components (major.minor[.rev]). Requested number of components: ${FIND_VERSION_COUNT} (FIND_VERSION='${FIND_VERSION}')")
+ endif()
+ 
+ # On Linux, we should find k4abt installed to the system path
+@@ -32,7 +38,7 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+         set(_required_arg REQUIRED)
+     endif()
+ 
+-    find_package(k4abt ${FIND_VERSION} ${_exact_arg} ${_quiet_arg} ${_required_arg} NO_MODULE)
++    find_package(k4abt ${_k4abt_find_version} ${_exact_arg} ${_quiet_arg} ${_required_arg} NO_MODULE)
+ 
+ # On Windows, we will have to find K4A Body Tracking installed in Program Files.
+ # We also cannot do any version checking on Windows

@@ -1,0 +1,3 @@
+# Populate this list by teaching collision-free calibration poses on your setup.
+# Do not copy poses from another robot installation.
+poses: []

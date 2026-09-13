@@ -1,0 +1,103 @@
+diff --git a/skel/alignment/aligner.py b/skel/alignment/aligner.py
+index 3e10414..46becdb 100644
+--- a/skel/alignment/aligner.py
++++ b/skel/alignment/aligner.py
+@@ -17,7 +17,7 @@ import torch
+ from tqdm import trange
+ import smplx
+ import torch.nn.functional as F
+-from psbody.mesh import Mesh, MeshViewer, MeshViewers
++# from psbody.mesh import Mesh, MeshViewer, MeshViewers
+ import skel.config as cg
+ from skel.skel_model import SKEL
+ import omegaconf 
+@@ -51,11 +51,12 @@ class SkelFitter(object):
+         self.cfg =  omegaconf.OmegaConf.load(config_path)
+            
+         # Instanciate the mesh viewer to visualize the fitting
+-        if('DISABLE_VIEWER' in os.environ):
++        if('DISABLE_VIEWER' in os.environ) or True: # Force DISABLE_VIEWER
+             self.mv = None
+             print("\n DISABLE_VIEWER flag is set, running in headless mode")
+         else:
+-            self.mv = MeshViewers((1,2),  keepalive=self.cfg.keepalive_meshviewer)
++            self.mv = None # Mocked
++            # self.mv = MeshViewers((1,2),  keepalive=self.cfg.keepalive_meshviewer)
+         
+         
+     def run_fit(self, 
+@@ -195,7 +196,10 @@ class SkelFitter(object):
+         trans_smpl = body_params['trans_smpl']
+         
+         # SKEL params
+-        betas = to_params(body_params['betas_skel'], device=self.device)
++        # NOTE: 禁止优化 betas（对单张图/短序列，SMPL/CLIFF betas 已足够；优化会更慢且更不稳定）
++        # body_params['betas_skel'] 在 _init_params 里已经是 torch tensor on device。
++        # 这里直接把它当常量（无 grad），只优化 poses/trans。
++        betas = body_params['betas_skel'].detach()
+         poses = to_params(body_params['poses_skel'], device=self.device)
+         trans = to_params(body_params['trans_skel'], device=self.device)
+         
+@@ -250,7 +254,16 @@ class SkelFitter(object):
+             poses_init = poses.detach().clone()               
+             trans_init = trans.detach().clone()
+ 
++            quiet = str(os.environ.get("SKEL_QUIET", "1")).lower() in ("1", "true", "yes", "y")
++            try:
++                print_every = int(os.environ.get("SKEL_PRINT_EVERY", "20"))
++            except Exception:
++                print_every = 20
++            print_every = max(1, print_every)
++            closure_calls = 0
++
+             def closure():
++                nonlocal closure_calls
+                 optimizer.zero_grad()
+                 
+                 fi = self.watch_frame #frame of the batch to display
+@@ -273,7 +286,9 @@ class SkelFitter(object):
+                                         verts,
+                                         cfg)
+                 
+-                print(pretty_loss_print(loss_dict))
++                if (not quiet) or (closure_calls % print_every == 0):
++                    print(pretty_loss_print(loss_dict))
++                closure_calls += 1
+                              
+                 loss = sum(loss_dict.values())                     
+                 loss.backward()
+@@ -389,6 +404,7 @@ class SkelFitter(object):
+ 
+     def _fstep_plot(self, output, cfg, verts, anat_joints):
+         "Function to plot each step"
++        return # Force return to avoid using psbody.mesh
+         
+         if('DISABLE_VIEWER' in os.environ):
+             return
+diff --git a/skel/alignment/utils.py b/skel/alignment/utils.py
+index bd70ed3..1d75816 100644
+--- a/skel/alignment/utils.py
++++ b/skel/alignment/utils.py
+@@ -3,7 +3,7 @@ import os
+ import pickle
+ import torch
+ import numpy as np
+-from psbody.mesh.sphere import Sphere
++# from psbody.mesh.sphere import Sphere
+ 
+ # to_params = lambda x: torch.from_numpy(x).float().to(self.device).requires_grad_(True)
+ # to_torch = lambda x: torch.from_numpy(x).float().to(self.device)
+@@ -124,8 +124,8 @@ def location_to_spheres(loc, color=(1,0,0), radius=0.02):
+     Returns:
+         list: List of spheres Mesh
+     """
+-
+-    cL = [Sphere(np.asarray([loc[i, 0], loc[i, 1], loc[i, 2]]), radius).to_mesh() for i in range(loc.shape[0])]
+-    for spL in cL:
+-        spL.set_vertex_colors(np.array(color)) 
+-    return cL
++    raise NotImplementedError("psbody dependency removed. Visualization unavailable.")
++    # cL = [Sphere(np.asarray([loc[i, 0], loc[i, 1], loc[i, 2]]), radius).to_mesh() for i in range(loc.shape[0])]
++    # for spL in cL:
++    #     spL.set_vertex_colors(np.array(color)) 
++    # return cL

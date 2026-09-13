@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- ========================================================= -->
+  <!-- 发布“眼在手上 / eye-in-hand”标定结果的 TF（含 MoveIt + AK 驱动） -->
+  <!-- Publish the eye-in-hand result produced by the calibration launch. -->
+  <!-- ========================================================= -->
+
+  <!-- ===== 通用参数 ===== -->
+  <arg name="use_sim" default="false"/>
+  <arg name="eye_on_hand" default="true"/>
+
+  <!-- 注意：namespace_prefix 会决定 publish.launch 使用的 namespace：
+       ${namespace_prefix}_eye_on_hand -->
+  <arg name="namespace_prefix" default="iiwa_azure_eih"/>
+  <arg name="calibration_file" default="$(env HOME)/.ros/easy_handeye/iiwa_azure_eih_eye_on_hand.yaml"/>
+
+  <!-- iiwa 帧 -->
+  <arg name="robot_effector_frame" default="iiwa_link_ee"/>
+
+  <!-- Keep tracking_base_frame consistent with the calibration. -->
+  <arg name="tracking_base_frame" default="camera_base"/>
+
+  <!-- 相机参数（Azure Kinect） -->
+  <arg name="color_enabled"       default="true"/>
+  <arg name="depth_enabled"       default="true"/>
+  <arg name="color_resolution"    default="720P"/>
+  <arg name="depth_mode"          default="NFOV_UNBINNED"/>
+  <arg name="fps"                 default="30"/>
+  <arg name="point_cloud"         default="true"/>
+  <arg name="rgb_point_cloud"     default="true"/>
+
+  <!-- 1) 机器人 MoveIt（加载机器人参数、控制器和 MoveGroup） -->
+  <include file="$(find iiwa_moveit)/launch/moveit_planning_execution.launch">
+    <arg name="sim" value="$(arg use_sim)"/>
+  </include>
+
+  <!-- 2) 启动相机驱动（Azure Kinect） -->
+  <include file="$(find azure_kinect_ros_driver)/launch/driver.launch">
+    <arg name="overwrite_robot_description" value="false"/>
+    <arg name="color_enabled"    value="$(arg color_enabled)"/>
+    <arg name="depth_enabled"    value="$(arg depth_enabled)"/>
+    <arg name="color_resolution" value="$(arg color_resolution)"/>
+    <arg name="depth_mode"       value="$(arg depth_mode)"/>
+    <arg name="fps"              value="$(arg fps)"/>
+    <arg name="point_cloud"      value="$(arg point_cloud)"/>
+    <arg name="rgb_point_cloud"  value="$(arg rgb_point_cloud)"/>
+  </include>
+
+  <!-- 3) 发布手眼标定 TF（eye_on_hand=true: robot_effector_frame -> tracking_base_frame） -->
+  <include file="$(find easy_handeye)/launch/publish.launch">
+    <arg name="eye_on_hand"        value="$(arg eye_on_hand)"/>
+    <arg name="namespace_prefix"   value="$(arg namespace_prefix)"/>
+    <arg name="calibration_file"   value="$(arg calibration_file)"/>
+    <arg name="robot_effector_frame" value="$(arg robot_effector_frame)"/>
+    <arg name="tracking_base_frame"  value="$(arg tracking_base_frame)"/>
+  </include>
+
+  <!-- 4) 发布 /iiwa/pose_stamped (从 /iiwa/state/CartesianPose 转换) -->
+  <node pkg="autonomous_scan_agent" type="iiwa_pose_converter.py" name="iiwa_pose_converter" output="screen" />
+
+</launch>
+
+

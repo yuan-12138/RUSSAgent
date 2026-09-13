@@ -1,0 +1,67 @@
+{
+  "tools": [
+    {
+      "name": "operator_io_tool",
+      "description": "Operator interaction (ask/say/sleep). Use this FIRST for task identification (ask what the scanning task is). Also used to wait for confirmations like 'ok'. You may use either 'say' or 'prompt' to provide the text (aliases). If audience='patient', the wording is patient-facing, but the confirmation input ('ok') is provided by the clinician/operator. IMPORTANT: audience must be 'operator' or 'patient' (no other values).",
+      "args_schema": {
+        "prompt": "string",
+        "say": "string",
+        "audience": "string (enum: 'operator' | 'patient')",
+        "expect_response": "boolean",
+        "sleep_sec": "float"
+      }
+    },
+    {
+      "name": "acquire_trajectory_tool",
+      "description": "Tool1: capture 2 RGB images, run CLIFF+SKEL, and export the scan trajectory for the requested organ (gallbladder/kidney/spine). REQUIRED args: organ, startpoint, endpoint. startpoint/endpoint are handbook keypoint NAMES. For organ='kidney' you MUST also pass side ('left' or 'right'). overwrite defaults to true. Keypoint mapping: gallbladder = xiphoid_process -> right_costal_margin; kidney(left) = T12_left -> left_inferior_border_of_12th_rib_endpoint; kidney(right) = T12_right -> right_inferior_border_of_12th_rib_endpoint; spine = T12 -> L5.",
+      "args_schema": {
+        "organ": "string (enum: 'gallbladder' | 'kidney' | 'spine')",
+        "side": "string (enum: 'left' | 'right'; required when organ='kidney')",
+        "startpoint": "string (handbook keypoint name, e.g. 'T12_left')",
+        "endpoint": "string (handbook keypoint name, e.g. 'left_inferior_border_of_12th_rib_endpoint')",
+        "overwrite": "boolean"
+      }
+    },
+    {
+      "name": "ribline_projection_tool",
+      "description": "Projection preview (creates ${RUSSAGENT_PATH_PREVIEW:-$HOME/.ros/russagent/path_preview1.yaml}). Project the acquired trajectory into 3D point cloud. After YAML is ready, blocks until the operator double-checks the trajectory in RViz and presses Enter. instruct_and_wait means instruct the patient to take a deep breath and hold (Kidney and Spine task no need to instruct and wait), then wait for ok before projecting. Recommended policy for auto_generate_delay_sec: set 3.0 if need to instruct the patient to take a deep breath and hold, and 4.0 if no need for that instruct.",
+      "args_schema": {
+        "instruct_and_wait": "boolean",
+        "auto_generate_delay_sec": "float"
+      }
+    },
+    {
+      "name": "point0_auto_verify_tool",
+      "description": "Point0 contact verification loop. Asks clinician to input good/poor/none and performs internal adjustment/retry automatically until good or max retries. Parameters: offset_step_m (adjustment step per retry in meters, negative means down/deeper; default -0.005m), max_retries (maximum number of retry attempts; default 10).",
+      "args_schema": {
+        "offset_step_m": "float",
+        "max_retries": "integer"
+      }
+    },
+    {
+      "name": "path_execute_server_tool",
+      "description": "Execute a scan path YAML via path_execute_server. Parameters: path_id (defaults to ${RUSSAGENT_PATH_PREVIEW:-$HOME/.ros/russagent/path_preview1.yaml}), wait_timeout_sec (maximum time to wait for the robot to reach the target position; usually is 120s), breath_instruction_on_impedance (boolean; Instruct patient to take a deep breath and hold before contact during scanning).",
+      "args_schema": {
+        "path_id": "string",
+        "wait_timeout_sec": "float",
+        "breath_instruction_on_impedance": "boolean"
+      }
+    },
+    {
+      "name": "reset_to_capture_pose_tool",
+      "description": "Reset robot to the picture-capture home pose (capture_poses.yaml index 3 / capture_03 by default; same as rgbpair pose_indices[0]). finish=false means the session continues (between-segment reset); finish=true means final completion (end session). Default invocation is tool_args: {}.",
+      "args_schema": {
+        "finish": "boolean"
+      }
+    },
+    {
+      "name": "post_scan_adjust_tool",
+      "description": "One-time post-scan verification for scan target centering. Ask clinician whether target is centered/-x/+x. If off-center, adjust path x by +/-0.01m and re-execute the full path once. No second verification loop. Parameters: path_yaml (${RUSSAGENT_PATH_PREVIEW:-$HOME/.ros/russagent/path_preview1.yaml}), wait_timeout_sec (maximum time to wait for the robot to reach the target pose; typically set to 120s), breath_instruction_on_impedance (boolean; Instruct patient to take a deep breath before re-execution.).",
+      "args_schema": {
+        "path_yaml": "string",
+        "wait_timeout_sec": "float",
+        "breath_instruction_on_impedance": "boolean"
+      }
+    }
+  ]
+}

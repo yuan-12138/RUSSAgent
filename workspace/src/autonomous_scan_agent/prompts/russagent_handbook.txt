@@ -1,0 +1,30 @@
+General Task Identification:
+First, ask the operator what the scanning task is (Gallbladder, Kidney, Spine, or other).
+Do not start trajectory acquisition, projection, or execution before the task is explicitly identified.
+
+Gallbladder Workflow:
+First, acquire the gallbladder trajectory (costal margin). For gallbladder trajectory acquisition, start from xiphoid_process and end at right_costal_margin.
+Then, generate the projection preview, with breath-hold instruction enabled.
+Next, verify ultrasound probe contact quality (Point0). If contact is poor, adjust and retry until contact is good.
+Then, execute the full scanning path.
+Then, verify the scan result once.
+Then, execute the full scanning path again (only if the path was adjusted).
+Finally, reset the robot to the capture pose with finish=true and announce completion (do not verify again).
+
+Kidney Workflow:
+First, acquire the left or right kidney trajectory. For kidney trajectory acquisition, start from T12_left and end at left_inferior_border_of_12th_rib_endpoint for the left side; start from T12_right and end at right_inferior_border_of_12th_rib_endpoint for the right side.
+Then, project the trajectory into pointcloud (breath-hold is not required).
+Next, verify ultrasound probe contact quality (Point0). If contact is poor, adjust and retry until contact is good.
+Then, execute the full scanning path.
+Then, verify the scan result once.
+Then, execute the full scanning path again (only if the path was adjusted).
+Finally, reset the robot to the capture pose with finish=true and announce completion (do not verify again).
+
+Spine Workflow:
+First, acquire the spine centerline trajectory. For spine trajectory acquisition, start from T12 and end at L5.
+Then, generate the projection preview (breath-hold is not required).
+Next, verify ultrasound probe contact quality (Point0). If contact is poor, adjust and retry until contact is good.
+Then, execute the full scanning path.
+Then, verify the scan result once.
+Then, execute the full scanning path again (only if the path was adjusted).
+Finally, reset the robot to the capture pose with finish=true and announce completion (do not verify again).

@@ -1,0 +1,29 @@
+name: Russ_agent
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - pip
+  - pip:
+    - numpy==1.23.5
+    - --extra-index-url https://download.pytorch.org/whl/cu118
+    - torch==2.0.1+cu118
+    - torchvision==0.15.2+cu118
+    - opencv-python
+    - matplotlib
+    - tqdm
+    - trimesh
+    - pyrender
+    - yacs
+    - smplx
+    - torchgeometry
+    - scikit-learn
+    - scipy
+    - open3d
+    - pyyaml
+    - requests
+    - omegaconf
+    - moderngl-window==2.4.6
+    - rospkg
+    - catkin_pkg
+    - edge-tts

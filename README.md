@@ -84,9 +84,9 @@ RUSSAgent/
 
 ## SFT prompt reference
 
-The [historical SFT prompt reference](docs/sft_prompt_reference/SFT_prompt_reference.md) provides the system prompt, a reconstructed input template, historical tool definitions, and the supervision format. It does not include the full experimental dataset or the SFT/PPO training pipeline.
+The [SFT prompt reference](docs/sft_prompt_reference/SFT_prompt_reference.md) documents the system prompt, input-message template, tool definitions, and expected output format for constructing SFT examples.
 
-The released demo can use a pretrained LLM through the configurable model API without repeating SFT or PPO. Hardware integration, calibration, pose configuration, and the required dependencies are still needed. Contact-quality and post-scan alignment judgments use operator feedback; see [hardware and release scope](docs/hardware.md).
+Running the released demo with a configured pretrained LLM does not require repeating SFT or PPO. See the quick start above and [hardware setup](docs/hardware.md).
 
 ## Docs
 

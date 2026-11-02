@@ -1,0 +1,11 @@
+Current Observation: {current_observation}
+
+History (Last {history_count}): {history}
+
+Relevant Handbook:
+{retrieved_handbook_sections}
+
+Relevant APIs:
+{retrieved_api_definitions}
+
+Valid tools: {valid_tool_names}
